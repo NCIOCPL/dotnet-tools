@@ -83,7 +83,16 @@ namespace dbConnectCheck
             }
 
             if (hasErrors)
-                throw new ConnectionStringErrorException("Errors found when checking one or more connections.");
+            {
+                string bigMessage = string.Empty;
+                errorMessages.ForEach(message => {
+                    if (!string.IsNullOrEmpty(bigMessage))
+                        bigMessage += "\n";
+                    bigMessage += message;
+                });
+
+                throw new ConnectionStringErrorException(bigMessage);
+            }
         }
 
         /// <summary>

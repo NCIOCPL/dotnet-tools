@@ -41,9 +41,11 @@ namespace dbConnectCheck
     [global::System.Serializable]
     public class ConnectionStringErrorException : Exception
     {
+        const string MESSAGE_PREFIX = "Connection string errors found:\n";
+
         public ConnectionStringErrorException() { }
-        public ConnectionStringErrorException(string message) : base(message) { }
-        public ConnectionStringErrorException(string message, Exception inner) : base(message, inner) { }
+        public ConnectionStringErrorException(string message) : base(MESSAGE_PREFIX + message) { }
+        public ConnectionStringErrorException(string message, Exception inner) : base(MESSAGE_PREFIX + message, inner) { }
         protected ConnectionStringErrorException(
           System.Runtime.Serialization.SerializationInfo info,
           System.Runtime.Serialization.StreamingContext context)
