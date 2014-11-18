@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "dbConnectCheck", "dbConnectCheck\dbConnectCheck.csproj", "{8859C6E5-EC89-4452-BFE6-D5B8AA3AA56D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8859C6E5-EC89-4452-BFE6-D5B8AA3AA56D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8859C6E5-EC89-4452-BFE6-D5B8AA3AA56D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8859C6E5-EC89-4452-BFE6-D5B8AA3AA56D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8859C6E5-EC89-4452-BFE6-D5B8AA3AA56D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		VisualSVNWorkingCopyRoot = .
+	EndGlobalSection
+EndGlobal
