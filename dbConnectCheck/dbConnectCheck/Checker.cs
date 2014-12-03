@@ -2,6 +2,7 @@
 using System.Data.SqlClient;
 using System.IO;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Xml;
 
@@ -16,8 +17,8 @@ namespace dbConnectCheck
             try
             {
                 Validate(args);
-                XmlDocument config = LoadConfigurationFile(args[0]);
-                CheckConnectionStrings(config);
+                ConnectionStringSettingsCollection connections = LoadConfigurationFile(args[0]);
+                CheckConnectionStrings(connections);
             }
             catch (Exception ex)
             {
@@ -32,29 +33,25 @@ namespace dbConnectCheck
         /// Find and test all the database connections.
         /// </summary>
         /// <param name="config"></param>
-        static void CheckConnectionStrings(XmlDocument config)
+        static void CheckConnectionStrings(ConnectionStringSettingsCollection connectionList)
         {
             SqlConnection conn;
             string successMessageFmt = "Connection {0} is valid.";
-            string failedMessageFmt = "Connection {0} failed.";
+            string failedMessageFmt = "Connection {0} failed. {1}";
 
             bool hasErrors = false;
             List<string> errorMessages = new List<string>();
 
             // Find all connection strings which have been added to this file.
-            XmlNodeList connectionList = config.SelectNodes("//connectionStrings/add");
-            foreach (XmlNode connection in connectionList)
+            foreach (ConnectionStringSettings connection in connectionList)
             {
                 string name = string.Empty;
                 string connectString = string.Empty;
 
                 try
                 {
-                    ValidateRequiredAttribute(connection, "name");
-                    ValidateRequiredAttribute(connection, "connectionString");
-
-                    name = connection.Attributes["name"].Value;
-                    connectString = connection.Attributes["connectionString"].Value;
+                    name = connection.Name;
+                    connectString = connection.ConnectionString;
 
                     using (conn = new SqlConnection(connectString))
                     {
@@ -63,17 +60,17 @@ namespace dbConnectCheck
                             conn.Open();
                             Console.WriteLine(string.Format(successMessageFmt, name));
                         }
-                        catch (Exception)
+                        catch (Exception ex)
                         {
                             hasErrors = true;
-                            errorMessages.Add(string.Format(failedMessageFmt, name));
+                            errorMessages.Add(string.Format(failedMessageFmt, name, ex.Message));
                         }
                     }
                 }
-                catch (ArgumentException)
+                catch (ArgumentException ex)
                 {
                     hasErrors = true;
-                    errorMessages.Add(string.Format(failedMessageFmt, name));
+                    errorMessages.Add(string.Format(failedMessageFmt, name, ex.Message));
                 }
                 catch (Exception ex)
                 {
@@ -96,42 +93,60 @@ namespace dbConnectCheck
         }
 
         /// <summary>
-        /// Validate that a required attribute (e.g. "name" or "connectionString") is present in
-        /// a connection definition.
-        /// </summary>
-        /// <param name="connection">XmlNode containing a connection defition (the <add/> element)</param>
-        /// <param name="attribute">Attribute to check for.</param>
-        static void ValidateRequiredAttribute(XmlNode connection, string attribute)
-        {
-            string missingAttributeMessageFmt = "Required attribute '{0}' is missing from: {1}.";
-            if (connection.Attributes[attribute] == null)
-                throw new ConnectionStringErrorException(string.Format(missingAttributeMessageFmt, attribute, connection.OuterXml));
-        }
-
-
-        /// <summary>
         /// Loads the specified configuration file.
         /// 
         /// Throws NotAConfigurationFileException if the file is not a valid configuration file.
         /// </summary>
         /// <param name="filepath">Name and optional path of the configuration file to be loaded.</param>
         /// <returns>An XmlDocument object containing the </returns>
-        static XmlDocument LoadConfigurationFile(string filepath)
+        static ConnectionStringSettingsCollection LoadConfigurationFile(string filepath)
         {
-            string badConfigMessageFmt = "{0} does not appear to be a valid configuration file.";
+            const string APP_CONFIG_KEY = "APP_CONFIG_FILE";
 
-            XmlDocument config = new XmlDocument();
+            Object oldConfigFile = AppDomain.CurrentDomain.GetData(APP_CONFIG_KEY);
+
+            ConnectionStringSettingsCollection returnedConnections = new ConnectionStringSettingsCollection();
+
             try
             {
-                config.Load(filepath);
-                if(config.DocumentElement.Name != "configuration")
-                    throw new NotAConfigurationFileException(string.Format(badConfigMessageFmt, filepath));
+                /// ConfigurationManager.OpenExeConfiguration(string) wants the filename of
+                /// an application to load from (and appends ".config"). Using that with an arbitrary
+                /// config file results in an error because it tries to load "app.config.config" and leaving out
+                /// the extension results in an error that the exepath isn't correctly formatted.
+                /// 
+                /// Trying to use WebConfigurationManager.OpenWebConfiguration() likewise fails, because it expects
+                /// a *virtual* path (i.e. A URL hosted on the current machine). This precludes checking configuration
+                /// files for anything but a web.config, and only allows this application to be run on a web server.
+                /// 
+                /// ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel) can be used by changing the
+                /// name of the application's configuration file.  See http://stackoverflow.com/a/14246260/282194
+                /// This is OK, as this application doesn't have a configuration file of its own.
+
+                // Preserve old config file name in case the above assumption changes.
+                AppDomain.CurrentDomain.SetData(APP_CONFIG_KEY, filepath);
+                Configuration conf = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                if (!conf.HasFile)
+                    throw new ConfigurationFileException(string.Format("Cannot load configuration file {0}.", filepath));
+
+                // Even if the connectionStrings section is missing from the file, there may be
+                // default connections inherited from the machine.config. These can be identified by
+                // the ElementInformation's property's IsPresent flag.
+                ConnectionStringsSection sect = conf.ConnectionStrings;
+
+                // Strip out .Net default connection strings.
+                foreach (ConnectionStringSettings  connString in sect.ConnectionStrings)
+                {
+                    if (connString.ElementInformation.IsPresent)
+                        returnedConnections.Add(connString);
+                }
             }
-            catch (XmlException ex)
+            finally
             {
-                throw new NotAConfigurationFileException(string.Format(badConfigMessageFmt, filepath), ex);
+                // Restore old config file name.
+                AppDomain.CurrentDomain.SetData(APP_CONFIG_KEY, oldConfigFile);
             }
-            return config;
+
+            return returnedConnections;
         }
 
         /// <summary>

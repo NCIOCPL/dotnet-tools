@@ -21,15 +21,15 @@ namespace dbConnectCheck
     }
 
     /// <summary>
-    /// Thrown when an invalid configuration file is loaded.
+    /// Thrown when problems are encountered with the configuration file.
     /// </summary>
     [global::System.Serializable]
-    public class NotAConfigurationFileException : Exception
+    public class ConfigurationFileException : Exception
     {
-        public NotAConfigurationFileException() { }
-        public NotAConfigurationFileException(string message) : base(message) { }
-        public NotAConfigurationFileException(string message, Exception inner) : base(message, inner) { }
-        protected NotAConfigurationFileException(
+        public ConfigurationFileException() { }
+        public ConfigurationFileException(string message) : base(message) { }
+        public ConfigurationFileException(string message, Exception inner) : base(message, inner) { }
+        protected ConfigurationFileException(
           System.Runtime.Serialization.SerializationInfo info,
           System.Runtime.Serialization.StreamingContext context)
             : base(info, context) { }
